@@ -136,6 +136,63 @@ const MOCK_DOCTOR_USER = {
   phone: "+1 (555) 987-6543"
 };
 
+const INITIAL_DEMO_APPOINTMENTS = [
+  {
+    _id: "appt_101",
+    doctorId: "doc_1",
+    doctorName: "Dr. Sarah Jenkins",
+    doctorSpecialty: "Cardiology",
+    doctorAvatar: "https://images.unsplash.com/photo-1559839734-2b71ea197ec2?q=80&w=400&auto=format&fit=crop",
+    patientName: "John Doe",
+    patientEmail: "patient@medibook.com",
+    user: {
+      _id: "user_patient_demo",
+      name: "John Doe",
+      email: "patient@medibook.com",
+      avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=400&auto=format&fit=crop"
+    },
+    date: new Date().toISOString().split('T')[0],
+    timeSlot: "10:30 AM",
+    reason: "Routine Heart & Blood Pressure Checkup",
+    type: "video",
+    status: "confirmed",
+    notes: "Patient reports mild fatigue after exercise. Prescribed ECG and BP log.",
+    createdAt: new Date().toISOString()
+  }
+];
+
+function getStoredAppointments(): any[] {
+  if (typeof window === 'undefined') return INITIAL_DEMO_APPOINTMENTS;
+  const stored = localStorage.getItem('medibook_appointments');
+  if (!stored) {
+    localStorage.setItem('medibook_appointments', JSON.stringify(INITIAL_DEMO_APPOINTMENTS));
+    return INITIAL_DEMO_APPOINTMENTS;
+  }
+  try {
+    return JSON.parse(stored);
+  } catch {
+    return INITIAL_DEMO_APPOINTMENTS;
+  }
+}
+
+function saveStoredAppointments(appts: any[]) {
+  if (typeof window !== 'undefined') {
+    localStorage.setItem('medibook_appointments', JSON.stringify(appts));
+  }
+}
+
+function getStoredHolidays(): string[] {
+  if (typeof window === 'undefined') return [];
+  const stored = localStorage.getItem('medibook_doctor_holidays');
+  return stored ? JSON.parse(stored) : [];
+}
+
+function saveStoredHolidays(holidays: string[]) {
+  if (typeof window !== 'undefined') {
+    localStorage.setItem('medibook_doctor_holidays', JSON.stringify(holidays));
+  }
+}
+
 export async function apiRequest<T = any>(
   endpoint: string,
   options: RequestInit = {}
@@ -177,7 +234,7 @@ export async function apiRequest<T = any>(
     const data = await response.json();
 
     if (!response.ok) {
-      throw new Error(data.message || 'Authentication failed. Please check your credentials.');
+      throw new Error(data.message || 'Request failed.');
     }
 
     return data;
@@ -190,6 +247,8 @@ export async function apiRequest<T = any>(
 function handleVercelFallback<T = any>(endpoint: string, options: RequestInit): ApiResponse<T> {
   const method = options.method ? options.method.toUpperCase() : 'GET';
   const body = options.body ? JSON.parse(options.body as string) : {};
+  const savedUserStr = typeof window !== 'undefined' ? localStorage.getItem('medibook_user') : null;
+  const currentUser = savedUserStr ? JSON.parse(savedUserStr) : MOCK_PATIENT_USER;
 
   // Auth Login
   if (endpoint.includes('/auth/login')) {
@@ -246,61 +305,144 @@ function handleVercelFallback<T = any>(endpoint: string, options: RequestInit): 
 
   // Auth Me
   if (endpoint.includes('/auth/me')) {
-    const savedUserStr = typeof window !== 'undefined' ? localStorage.getItem('medibook_user') : null;
-    const user = savedUserStr ? JSON.parse(savedUserStr) : MOCK_PATIENT_USER;
     return {
       success: true,
-      user: user as any,
-      data: user as any
+      user: currentUser as any,
+      data: currentUser as any
     };
   }
 
-  // Doctors list - Returns ALL 6 certified doctors!
+  // Doctors List - Returns ALL 6 certified specialist doctors plus holidays
   if (endpoint.includes('/doctors')) {
+    const holidays = getStoredHolidays();
+    const doctorsWithHolidays = MOCK_DOCTORS.map(doc => {
+      if (doc._id === 'doc_1' || doc.email === 'doctor@medibook.com') {
+        return { ...doc, holidays };
+      }
+      return doc;
+    });
     return {
       success: true,
-      count: MOCK_DOCTORS.length,
-      data: MOCK_DOCTORS as any
+      count: doctorsWithHolidays.length,
+      data: doctorsWithHolidays as any
     };
   }
 
-  // Appointments
+  // Doctor Portal Endpoints
+  if (endpoint.includes('/doctor-portal/stats')) {
+    const allAppts = getStoredAppointments();
+    const docHolidays = getStoredHolidays();
+    const todayStr = new Date().toISOString().split('T')[0];
+    const todayPatients = allAppts.filter(a => a.date === todayStr).length;
+    const completedVisits = allAppts.filter(a => a.status === 'completed').length;
+    const totalEarnings = allAppts.reduce((sum, a) => sum + (a.fee || 150), 0);
+
+    return {
+      success: true,
+      data: {
+        doctorInfo: {
+          ...MOCK_DOCTOR_USER,
+          specialty: 'Cardiology',
+          holidays: docHolidays
+        },
+        metrics: {
+          todayPatients,
+          totalPatients: allAppts.length,
+          completedVisits,
+          totalEarnings
+        }
+      } as any
+    };
+  }
+
+  if (endpoint.includes('/doctor-portal/appointments')) {
+    const allAppts = getStoredAppointments();
+    return {
+      success: true,
+      count: allAppts.length,
+      data: allAppts as any
+    };
+  }
+
+  if (endpoint.includes('/doctor-portal/appointment/')) {
+    const apptId = endpoint.split('/doctor-portal/appointment/')[1];
+    let allAppts = getStoredAppointments();
+    const index = allAppts.findIndex(a => a._id === apptId);
+    if (index !== -1) {
+      if (body.status) allAppts[index].status = body.status;
+      if (body.notes) allAppts[index].notes = body.notes;
+      saveStoredAppointments(allAppts);
+      return { success: true, data: allAppts[index] as any };
+    }
+  }
+
+  if (endpoint.includes('/doctor-portal/holiday')) {
+    let holidays = getStoredHolidays();
+    if (method === 'POST') {
+      if (body.date && !holidays.includes(body.date)) {
+        holidays.push(body.date);
+        saveStoredHolidays(holidays);
+      }
+    } else if (method === 'DELETE') {
+      const targetDate = endpoint.split('/doctor-portal/holiday/')[1];
+      holidays = holidays.filter(d => d !== targetDate);
+      saveStoredHolidays(holidays);
+    }
+    return { success: true, holidays };
+  }
+
+  // Patient Appointments
   if (endpoint.includes('/appointments')) {
+    let allAppts = getStoredAppointments();
+
     if (method === 'POST') {
       const doc = MOCK_DOCTORS.find(d => d._id === body.doctorId) || MOCK_DOCTORS[0];
       const newAppt = {
         _id: `appt_${Date.now()}`,
+        doctorId: doc._id,
         doctorName: doc.name,
         doctorSpecialty: doc.specialty,
         doctorAvatar: doc.avatar,
-        patientName: 'John Doe',
+        patientName: currentUser?.name || 'John Doe',
+        patientEmail: currentUser?.email || 'patient@medibook.com',
+        user: {
+          _id: currentUser?._id || 'user_patient_demo',
+          name: currentUser?.name || 'John Doe',
+          email: currentUser?.email || 'patient@medibook.com',
+          avatar: currentUser?.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=400&auto=format&fit=crop'
+        },
         date: body.date || new Date().toISOString().split('T')[0],
         timeSlot: body.timeSlot || '10:00 AM',
         reason: body.reason || 'General Consultation',
         type: body.type || 'in-person',
+        notes: body.notes || '',
+        fee: doc.fee || 150,
         status: 'confirmed',
         createdAt: new Date().toISOString()
       };
+
+      allAppts = [newAppt, ...allAppts];
+      saveStoredAppointments(allAppts);
+
       return { success: true, data: newAppt as any };
     }
 
-    // GET My appointments
-    const demoAppts = [
-      {
-        _id: "appt_101",
-        doctorName: "Dr. Sarah Jenkins",
-        doctorSpecialty: "Cardiology",
-        doctorAvatar: "https://images.unsplash.com/photo-1559839734-2b71ea197ec2?q=80&w=400&auto=format&fit=crop",
-        patientName: "John Doe",
-        date: "2026-08-15",
-        timeSlot: "10:30 AM",
-        reason: "Routine Heart & Blood Pressure Checkup",
-        type: "video",
-        status: "confirmed",
-        createdAt: new Date().toISOString()
+    if (method === 'PATCH' || method === 'PUT') {
+      const apptId = endpoint.split('/appointments/')[1]?.split('/')[0];
+      if (apptId) {
+        allAppts = allAppts.map(a => {
+          if (a._id === apptId) {
+            return { ...a, status: body.status || a.status, notes: body.notes || a.notes };
+          }
+          return a;
+        });
+        saveStoredAppointments(allAppts);
       }
-    ];
-    return { success: true, count: demoAppts.length, data: demoAppts as any };
+      return { success: true, data: allAppts as any };
+    }
+
+    // GET My appointments
+    return { success: true, count: allAppts.length, data: allAppts as any };
   }
 
   // Payments
@@ -346,7 +488,7 @@ function handleVercelFallback<T = any>(endpoint: string, options: RequestInit): 
         {
           _id: "notif_1",
           title: "Appointment Confirmed",
-          message: "Your consultation with Dr. Sarah Jenkins is scheduled for Aug 15 at 10:30 AM.",
+          message: "Your consultation with Dr. Sarah Jenkins is scheduled for today at 10:30 AM.",
           type: "appointment_confirmed",
           isRead: false,
           createdAt: new Date().toISOString()
