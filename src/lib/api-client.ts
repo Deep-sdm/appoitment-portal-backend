@@ -156,14 +156,14 @@ export async function apiRequest<T = any>(
   const isExternalVercelHost = isBrowser && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1';
   const isLocalhostApi = API_BASE_URL.includes('localhost') || API_BASE_URL.includes('127.0.0.1');
 
-  // If opening live Vercel URL on another device without hosted backend URL, use direct instant zero-error Vercel fallback
+  // If opening live Vercel URL on another device without custom backend URL, use direct instant zero-error Vercel fallback
   if (isExternalVercelHost && isLocalhostApi) {
     return handleVercelFallback<T>(endpoint, options);
   }
 
   // Set timeout controller for fast fallback on local network if backend port 5000 is unreachable
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 2000);
+  const timeoutId = setTimeout(() => controller.abort(), 3000);
 
   try {
     const response = await fetch(`${API_BASE_URL}${endpoint}`, {
@@ -177,7 +177,7 @@ export async function apiRequest<T = any>(
     const data = await response.json();
 
     if (!response.ok) {
-      throw new Error(data.message || 'Something went wrong');
+      throw new Error(data.message || 'Authentication failed. Please check your credentials.');
     }
 
     return data;
@@ -193,8 +193,27 @@ function handleVercelFallback<T = any>(endpoint: string, options: RequestInit): 
 
   // Auth Login
   if (endpoint.includes('/auth/login')) {
-    const isDoctor = body.role === 'doctor' || body.email?.includes('doctor');
-    const user = isDoctor ? MOCK_DOCTOR_USER : MOCK_PATIENT_USER;
+    const isDoctorRole = body.role === 'doctor' || body.email?.includes('doctor');
+    let user;
+    if (body.email === 'doctor@medibook.com' || isDoctorRole) {
+      user = MOCK_DOCTOR_USER;
+    } else if (body.email === 'patient@medibook.com') {
+      user = MOCK_PATIENT_USER;
+    } else {
+      const emailPrefix = body.email ? body.email.split('@')[0] : 'User';
+      const formattedName = isDoctorRole ? `Dr. ${emailPrefix}` : emailPrefix;
+      user = {
+        _id: `user_${Date.now()}`,
+        name: formattedName,
+        email: body.email || 'patient@medibook.com',
+        role: isDoctorRole ? 'doctor' : 'patient',
+        avatar: isDoctorRole
+          ? 'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?q=80&w=400&auto=format&fit=crop'
+          : 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=400&auto=format&fit=crop',
+        phone: '+1 (555) 000-1122'
+      };
+    }
+
     return {
       success: true,
       message: 'Login successful',
@@ -206,12 +225,15 @@ function handleVercelFallback<T = any>(endpoint: string, options: RequestInit): 
 
   // Auth Register
   if (endpoint.includes('/auth/register')) {
+    const isDoctor = body.role === 'doctor';
     const user = {
       _id: `user_${Date.now()}`,
       name: body.name || 'Demo User',
       email: body.email || 'user@medibook.com',
       role: body.role || 'patient',
-      avatar: ''
+      avatar: isDoctor
+        ? 'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?q=80&w=400&auto=format&fit=crop'
+        : 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=400&auto=format&fit=crop'
     };
     return {
       success: true,
