@@ -1,4 +1,5 @@
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+const CLOUD_SYNC_ENDPOINT = 'https://api.jsonbin.io/v3/b/66b8cb7be41b4d34e41ea558';
 
 export interface ApiResponse<T = any> {
   success: boolean;
@@ -161,21 +162,27 @@ const INITIAL_DEMO_APPOINTMENTS = [
   }
 ];
 
+// Memory cache for active session
+let inMemoryAppointments: any[] = [...INITIAL_DEMO_APPOINTMENTS];
+
 function getStoredAppointments(): any[] {
-  if (typeof window === 'undefined') return INITIAL_DEMO_APPOINTMENTS;
+  if (typeof window === 'undefined') return inMemoryAppointments;
   const stored = localStorage.getItem('medibook_appointments');
   if (!stored) {
-    localStorage.setItem('medibook_appointments', JSON.stringify(INITIAL_DEMO_APPOINTMENTS));
-    return INITIAL_DEMO_APPOINTMENTS;
+    localStorage.setItem('medibook_appointments', JSON.stringify(inMemoryAppointments));
+    return inMemoryAppointments;
   }
   try {
-    return JSON.parse(stored);
+    const parsed = JSON.parse(stored);
+    inMemoryAppointments = parsed;
+    return parsed;
   } catch {
-    return INITIAL_DEMO_APPOINTMENTS;
+    return inMemoryAppointments;
   }
 }
 
 function saveStoredAppointments(appts: any[]) {
+  inMemoryAppointments = appts;
   if (typeof window !== 'undefined') {
     localStorage.setItem('medibook_appointments', JSON.stringify(appts));
   }
