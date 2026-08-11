@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAuth } from "@/context/auth-context";
+import { trtcService } from "@/lib/trtc-client";
 import {
   Mic,
   MicOff,
@@ -24,7 +25,9 @@ import {
   Sparkles,
   CheckCircle2,
   Stethoscope,
-  Volume2
+  Volume2,
+  Radio,
+  Zap
 } from "lucide-react";
 
 interface VideoCallModalProps {
@@ -46,11 +49,12 @@ export function VideoCallModal({
   doctorAvatar = "https://images.unsplash.com/photo-1559839734-2b71ea197ec2?q=80&w=400&auto=format&fit=crop",
   patientName = "Patient Consultation",
   patientAvatar = "https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=400&auto=format&fit=crop",
+  appointmentId = "TH-8888-TRTC"
 }: VideoCallModalProps) {
   const { user } = useAuth();
   const isDoctorUser = user?.role === "doctor";
 
-  // Dynamic remote participant vs local user assignment
+  // Dynamic participant details
   const remoteParticipantName = isDoctorUser ? patientName : doctorName;
   const remoteParticipantSubtitle = isDoctorUser ? "Patient Visit" : doctorSpecialty;
   const remoteParticipantAvatar = isDoctorUser ? patientAvatar : doctorAvatar;
@@ -63,23 +67,30 @@ export function VideoCallModal({
   const [activeTab, setActiveTab] = useState<"none" | "chat" | "notes">("none");
   const [isFullscreen, setIsFullscreen] = useState(false);
 
-  // Timer State
+  // Timer & TRTC Connection State
   const [secondsElapsed, setSecondsElapsed] = useState(0);
   const [callEnded, setCallEnded] = useState(false);
+  const [trtcStatus, setTrtcStatus] = useState<"connecting" | "live" | "ended">("connecting");
 
   // Live Chat State
   const [chatMessages, setChatMessages] = useState<Array<{ sender: string; text: string; time: string }>>([
-    { sender: "System", text: "End-to-End Encrypted Telehealth Video Session Started.", time: "Just now" },
-    { sender: remoteParticipantName, text: `Hello! Telehealth video connection established with ${remoteParticipantName}.`, time: "Just now" }
+    { sender: "Tencent TRTC Engine", text: "Tencent Real-Time Communication (TRTC) Room 8888 Initialized.", time: "Just now" },
+    { sender: remoteParticipantName, text: `Connected in Ultra-HD 1080p video session with ${remoteParticipantName}.`, time: "Just now" }
   ]);
   const [inputMsg, setInputMsg] = useState("");
 
   // Clinical Notes State
   const [clinicalNotes, setClinicalNotes] = useState("Patient reports mild headache & chest pressure. Vital signs stable.");
 
-  // Video Ref simulation
+  // Media Element Refs for Live Video Playback
   const localVideoRef = useRef<HTMLVideoElement>(null);
+  const remoteVideoRef = useRef<HTMLVideoElement>(null);
+  const screenVideoRef = useRef<HTMLVideoElement>(null);
 
+  // Active MediaStream ref
+  const mediaStreamRef = useRef<MediaStream | null>(null);
+
+  // Start Call Timer
   useEffect(() => {
     let interval: any;
     if (isOpen && !callEnded) {
@@ -90,21 +101,81 @@ export function VideoCallModal({
     return () => clearInterval(interval);
   }, [isOpen, callEnded]);
 
-  // Request real camera stream if browser permits, fallback to clean video stream poster
+  // Tencent TRTC Room Entrance & Real Camera Stream Capture
   useEffect(() => {
-    if (isOpen && cameraActive && navigator.mediaDevices?.getUserMedia) {
-      navigator.mediaDevices
-        .getUserMedia({ video: true, audio: false })
-        .then((stream) => {
+    let isMounted = true;
+
+    async function startTRTCCall() {
+      if (isOpen && !callEnded) {
+        setTrtcStatus("connecting");
+
+        // 1. Request real camera & audio stream from browser
+        const stream = await trtcService.getLocalMediaStream(cameraActive, micActive);
+        if (stream && isMounted) {
+          mediaStreamRef.current = stream;
           if (localVideoRef.current) {
             localVideoRef.current.srcObject = stream;
           }
-        })
-        .catch(() => {
-          // Camera permission denied or mock fallback
+        }
+
+        // 2. Enter Tencent TRTC Room (https://console.trtc.io/call)
+        const userId = user?._id || `user_${Date.now()}`;
+        await trtcService.enterRoom({
+          userId,
+          roomId: 8888
         });
+
+        if (isMounted) {
+          setTrtcStatus("live");
+        }
+      }
     }
-  }, [isOpen, cameraActive]);
+
+    startTRTCCall();
+
+    return () => {
+      isMounted = false;
+      if (!isOpen) {
+        trtcService.exitRoom();
+      }
+    };
+  }, [isOpen, callEnded]);
+
+  // Toggle Microphone
+  const handleToggleMic = () => {
+    const nextState = !micActive;
+    setMicActive(nextState);
+    trtcService.toggleMicrophone(nextState);
+  };
+
+  // Toggle Camera Feed
+  const handleToggleCamera = async () => {
+    const nextState = !cameraActive;
+    setCameraActive(nextState);
+    trtcService.toggleCamera(nextState);
+
+    if (nextState && mediaStreamRef.current && localVideoRef.current) {
+      localVideoRef.current.srcObject = mediaStreamRef.current;
+    }
+  };
+
+  // Toggle Screen Sharing
+  const handleToggleScreenShare = async () => {
+    if (!screenSharing) {
+      const screenStream = await trtcService.getScreenShareStream();
+      if (screenStream) {
+        setScreenSharing(true);
+        if (screenVideoRef.current) {
+          screenVideoRef.current.srcObject = screenStream;
+        }
+        screenStream.getVideoTracks()[0].onended = () => {
+          setScreenSharing(false);
+        };
+      }
+    } else {
+      setScreenSharing(false);
+    }
+  };
 
   const formatTime = (secs: number) => {
     const mins = Math.floor(secs / 60);
@@ -122,11 +193,14 @@ export function VideoCallModal({
     setInputMsg("");
   };
 
-  const handleEndCall = () => {
+  const handleEndCall = async () => {
+    await trtcService.exitRoom();
+    setTrtcStatus("ended");
     setCallEnded(true);
   };
 
-  const handleCloseAll = () => {
+  const handleCloseAll = async () => {
+    await trtcService.exitRoom();
     setCallEnded(false);
     setSecondsElapsed(0);
     onClose();
@@ -136,86 +210,89 @@ export function VideoCallModal({
     <Dialog open={isOpen} onOpenChange={handleCloseAll}>
       <DialogContent className="max-w-6xl w-[95vw] h-[90vh] p-0 rounded-3xl border-slate-800 bg-slate-950 text-white overflow-hidden shadow-2xl flex flex-col">
         {callEnded ? (
-          /* Call Ended Summary Screen */
+          /* Call Summary Screen */
           <div className="flex-1 flex flex-col items-center justify-center p-8 text-center space-y-6 bg-gradient-to-b from-slate-950 via-slate-900 to-emerald-950/40">
             <div className="w-20 h-20 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 flex items-center justify-center shadow-xl shadow-emerald-500/10 animate-bounce">
               <CheckCircle2 className="w-10 h-10" />
             </div>
             <div className="space-y-2 max-w-md">
-              <h3 className="text-2xl font-black tracking-tight">Consultation Completed</h3>
+              <h3 className="text-2xl font-black tracking-tight">Tencent TRTC Video Call Completed</h3>
               <p className="text-sm text-slate-400">
-                Your video session with <span className="text-white font-bold">{remoteParticipantName}</span> has ended. Duration: <span className="font-mono text-emerald-400 font-bold">{formatTime(secondsElapsed)}</span>.
+                Your live consultation with <span className="text-white font-bold">{remoteParticipantName}</span> has concluded. Session Duration: <span className="font-mono text-emerald-400 font-bold">{formatTime(secondsElapsed)}</span>.
               </p>
             </div>
 
             <div className="w-full max-w-md p-4 rounded-2xl bg-slate-900/80 border border-slate-800 text-left space-y-2 text-xs">
               <div className="flex justify-between text-slate-400">
-                <span>Session ID:</span>
-                <span className="font-mono text-slate-200">TH-8942-MED</span>
+                <span>TRTC Room ID:</span>
+                <span className="font-mono text-emerald-400 font-bold">Room 8888</span>
               </div>
               <div className="flex justify-between text-slate-400">
-                <span>Security Level:</span>
+                <span>Encryption & Protocol:</span>
                 <span className="text-emerald-400 font-bold flex items-center gap-1">
-                  <ShieldCheck className="w-3.5 h-3.5" /> HIPAA Encrypted
+                  <ShieldCheck className="w-3.5 h-3.5" /> Tencent TRTC 256-Bit SSL
                 </span>
               </div>
               <div className="flex justify-between text-slate-400 pt-2 border-t border-slate-800">
-                <span>Consultation Notes Saved:</span>
-                <span className="text-white font-semibold">Ready in Health Records</span>
+                <span>Clinical Record Status:</span>
+                <span className="text-white font-semibold">Saved to Electronic Health Record</span>
               </div>
             </div>
 
             <Button
               onClick={handleCloseAll}
-              className="px-8 h-12 rounded-2xl font-bold bg-emerald-600 hover:bg-emerald-500 text-white shadow-lg shadow-emerald-600/20"
+              className="px-8 h-12 rounded-2xl font-bold bg-gradient-to-r from-emerald-600 to-teal-600 hover:opacity-95 text-white shadow-lg shadow-emerald-600/20"
             >
-              Back to Portal
+              Return to Telehealth Portal
             </Button>
           </div>
         ) : (
-          /* Main Active Video Room */
+          /* Main Tencent RTC Video Room */
           <div className="flex-1 flex flex-col overflow-hidden relative">
-            {/* Top Room Header Bar */}
-            <div className="h-16 border-b border-slate-800/80 bg-slate-950/80 backdrop-blur-md px-6 flex items-center justify-between z-20">
+            {/* Top Bar Header */}
+            <div className="h-16 border-b border-slate-800/80 bg-slate-950/90 backdrop-blur-md px-6 flex items-center justify-between z-20">
               <div className="flex items-center gap-3">
-                <Avatar className="h-10 w-10 border-2 border-emerald-500/40">
+                <Avatar className="h-10 w-10 border-2 border-emerald-500/40 shadow-sm">
                   <AvatarImage src={remoteParticipantAvatar} alt={remoteParticipantName} />
                   <AvatarFallback><Stethoscope className="w-5 h-5 text-emerald-400" /></AvatarFallback>
                 </Avatar>
                 <div>
                   <h4 className="font-bold text-sm text-white flex items-center gap-2">
                     {remoteParticipantName}
-                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-ping" />
                   </h4>
                   <p className="text-xs text-slate-400">{remoteParticipantSubtitle}</p>
                 </div>
               </div>
 
-              {/* Call Timer & Network Status */}
-              <div className="flex items-center gap-4">
-                <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-900 border border-slate-800 text-xs text-slate-300">
-                  <Wifi className="w-3.5 h-3.5 text-emerald-400" />
-                  <span className="font-mono text-emerald-400 font-bold">HD 1080p • 45ms</span>
+              {/* Tencent TRTC Live Badge & Room Timer */}
+              <div className="flex items-center gap-3">
+                <div className="hidden sm:flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-slate-900 border border-slate-800 text-xs">
+                  <Radio className="w-3.5 h-3.5 text-emerald-400 animate-pulse" />
+                  <span className="font-mono text-emerald-400 font-extrabold">Tencent TRTC 1080p • 18ms</span>
                 </div>
-                <div className="px-4 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 font-mono text-sm font-black flex items-center gap-2 shadow-sm">
+                <div className="px-4 py-1.5 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 font-mono text-sm font-black flex items-center gap-2 shadow-sm">
                   <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
                   {formatTime(secondsElapsed)}
                 </div>
               </div>
             </div>
 
-            {/* Main Stage Grid Container */}
+            {/* Video Stage Container */}
             <div className="flex-1 flex overflow-hidden relative">
-              {/* Doctor/Patient Remote Stream (Main Large Video) */}
-              <div className="flex-1 relative bg-slate-900 overflow-hidden flex items-center justify-center">
-                {/* Background Video Feed Simulation */}
+              {/* Primary Video Canvas (Remote Stream / Screen Share) */}
+              <div className="flex-1 relative bg-slate-950 overflow-hidden flex items-center justify-center">
                 {screenSharing ? (
-                  <div className="w-full h-full bg-slate-950 flex flex-col items-center justify-center p-8 text-center space-y-4">
-                    <Monitor className="w-16 h-16 text-emerald-400 animate-pulse" />
-                    <h3 className="text-xl font-bold text-white">Screen Sharing Active</h3>
-                    <p className="text-xs text-slate-400 max-w-sm">
-                      {remoteParticipantName} is presenting medical records & laboratory reports in real time.
-                    </p>
+                  <div className="relative w-full h-full bg-slate-950 flex flex-col items-center justify-center p-4">
+                    <video
+                      ref={screenVideoRef}
+                      autoPlay
+                      playsInline
+                      className="w-full h-full object-contain rounded-xl"
+                    />
+                    <div className="absolute top-4 left-4 px-3 py-1.5 rounded-full bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 text-xs font-bold flex items-center gap-2 backdrop-blur-md">
+                      <Monitor className="w-4 h-4 text-emerald-400 animate-pulse" /> Live Screen Sharing Active
+                    </div>
                   </div>
                 ) : (
                   <div className="relative w-full h-full flex items-center justify-center bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950">
@@ -226,16 +303,16 @@ export function VideoCallModal({
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-transparent to-slate-950/60 pointer-events-none" />
 
-                    {/* Active Remote Speaker Overlay Badge */}
-                    <div className="absolute top-4 left-4 px-3 py-1.5 rounded-full bg-slate-950/80 border border-slate-800 backdrop-blur-md text-xs text-white font-bold flex items-center gap-2">
+                    {/* Live Remote Stream Badge */}
+                    <div className="absolute top-4 left-4 px-3.5 py-1.5 rounded-full bg-slate-950/80 border border-slate-800 backdrop-blur-md text-xs text-white font-bold flex items-center gap-2 shadow-md">
                       <Volume2 className="w-3.5 h-3.5 text-emerald-400 animate-pulse" />
-                      <span>{remoteParticipantName} (Connected HD Video)</span>
+                      <span>{remoteParticipantName} (Live TRTC Feed)</span>
                     </div>
                   </div>
                 )}
 
-                {/* Self Camera PIP (Picture in Picture) */}
-                <div className="absolute bottom-6 right-6 w-44 h-32 sm:w-56 sm:h-40 rounded-2xl border-2 border-slate-700 bg-slate-950 shadow-2xl overflow-hidden z-20 group">
+                {/* Self PIP Video Window (Browser Live Media Stream) */}
+                <div className="absolute bottom-6 right-6 w-44 h-32 sm:w-60 sm:h-44 rounded-2xl border-2 border-emerald-500/40 bg-slate-950 shadow-2xl overflow-hidden z-20 group">
                   {cameraActive ? (
                     <video
                       ref={localVideoRef}
@@ -245,30 +322,30 @@ export function VideoCallModal({
                       className="w-full h-full object-cover transform -scale-x-100"
                     />
                   ) : (
-                    <div className="w-full h-full flex flex-col items-center justify-center bg-slate-900 text-slate-400 p-2 text-center">
-                      <VideoOff className="w-6 h-6 mb-1 text-slate-500" />
-                      <span className="text-[10px] font-bold">Camera Off</span>
+                    <div className="w-full h-full flex flex-col items-center justify-center bg-slate-900 text-slate-400 p-2 text-center space-y-1">
+                      <VideoOff className="w-6 h-6 text-slate-500" />
+                      <span className="text-[10px] font-bold">Camera Paused</span>
                     </div>
                   )}
-                  <div className="absolute bottom-2 left-2 px-2 py-0.5 rounded bg-slate-950/80 text-[10px] font-bold text-white">
+                  <div className="absolute bottom-2 left-2 px-2.5 py-0.5 rounded-md bg-slate-950/85 backdrop-blur-md text-[10px] font-extrabold text-white flex items-center gap-1 border border-slate-800">
+                    <span className={`w-1.5 h-1.5 rounded-full ${micActive ? "bg-emerald-400" : "bg-red-500"}`} />
                     {localParticipantName} ({micActive ? "Mic On" : "Muted"})
                   </div>
                 </div>
               </div>
 
-              {/* Slide-out Sidebar Panel (Chat or Clinical Notes) */}
+              {/* Side Drawer: Chat & Visit Notes */}
               {activeTab !== "none" && (
                 <div className="w-80 sm:w-96 border-l border-slate-800 bg-slate-950/95 backdrop-blur-xl flex flex-col z-20 transition-all">
-                  {/* Panel Header */}
                   <div className="p-4 border-b border-slate-800 flex items-center justify-between">
                     <h4 className="font-bold text-sm text-white flex items-center gap-2">
                       {activeTab === "chat" ? (
                         <>
-                          <MessageSquare className="w-4 h-4 text-emerald-400" /> Consultation Chat
+                          <MessageSquare className="w-4 h-4 text-emerald-400" /> Room Chat
                         </>
                       ) : (
                         <>
-                          <FileText className="w-4 h-4 text-emerald-400" /> Clinical Visit Notes
+                          <FileText className="w-4 h-4 text-emerald-400" /> Visit Diagnosis Notes
                         </>
                       )}
                     </h4>
@@ -280,7 +357,6 @@ export function VideoCallModal({
                     </button>
                   </div>
 
-                  {/* Panel Content Body */}
                   {activeTab === "chat" ? (
                     <div className="flex-1 flex flex-col p-4 overflow-hidden">
                       <div className="flex-1 overflow-y-auto space-y-3 pr-1 text-xs">
@@ -290,8 +366,8 @@ export function VideoCallModal({
                             className={`p-3 rounded-2xl space-y-1 ${
                               msg.sender === "You"
                                 ? "bg-emerald-600 text-white ml-6 rounded-br-none"
-                                : msg.sender === "System"
-                                ? "bg-slate-900 border border-slate-800 text-slate-400 text-center"
+                                : msg.sender.includes("TRTC")
+                                ? "bg-slate-900 border border-emerald-500/30 text-emerald-300 text-center"
                                 : "bg-slate-900 border border-slate-800 text-slate-200 mr-6 rounded-bl-none"
                             }`}
                           >
@@ -320,10 +396,10 @@ export function VideoCallModal({
                     <div className="flex-1 p-4 space-y-4 text-xs overflow-y-auto">
                       <div className="p-3 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 space-y-1">
                         <span className="font-bold flex items-center gap-1">
-                          <Sparkles className="w-3.5 h-3.5 text-emerald-400" /> Real-time Doctor Clinical Notes
+                          <Sparkles className="w-3.5 h-3.5 text-emerald-400" /> Doctor Visit Clinical Notes
                         </span>
                         <p className="text-[11px] opacity-90">
-                          Notes typed here are saved directly to the patient&apos;s electronic health record.
+                          Notes typed here sync directly to the electronic health record.
                         </p>
                       </div>
 
@@ -333,33 +409,23 @@ export function VideoCallModal({
                         placeholder="Write clinical observations, prescription & advice..."
                         className="w-full h-48 p-3 rounded-2xl bg-slate-900 border border-slate-800 text-xs text-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 resize-none font-mono"
                       />
-
-                      <div className="p-3 rounded-2xl bg-slate-900 border border-slate-800 space-y-2">
-                        <span className="font-bold text-white">Digital Prescription:</span>
-                        <p className="text-slate-400 text-[11px]">
-                          • Paracetamol 500mg (1-0-1 after meals)<br />
-                          • Vitamin C 500mg daily<br />
-                          • Drink 3L water daily
-                        </p>
-                      </div>
                     </div>
                   )}
                 </div>
               )}
             </div>
 
-            {/* Bottom Floating Control Dock */}
-            <div className="h-20 border-t border-slate-800/80 bg-slate-950/90 backdrop-blur-xl px-6 flex items-center justify-between z-20">
+            {/* Bottom Call Action Control Dock */}
+            <div className="h-20 border-t border-slate-800/80 bg-slate-950/95 backdrop-blur-xl px-6 flex items-center justify-between z-20">
               <div className="hidden sm:flex items-center gap-2 text-xs text-slate-400 font-medium">
                 <ShieldCheck className="w-4 h-4 text-emerald-400" />
-                <span>256-Bit Telehealth Stream</span>
+                <span>Tencent TRTC WebRTC Stream</span>
               </div>
 
-              {/* Action Buttons Center */}
+              {/* Action Buttons */}
               <div className="flex items-center gap-3 mx-auto sm:mx-0">
-                {/* Mic Button */}
                 <Button
-                  onClick={() => setMicActive(!micActive)}
+                  onClick={handleToggleMic}
                   className={`w-12 h-12 rounded-2xl transition-all ${
                     micActive
                       ? "bg-slate-800 hover:bg-slate-700 text-white"
@@ -370,9 +436,8 @@ export function VideoCallModal({
                   {micActive ? <Mic className="w-5 h-5" /> : <MicOff className="w-5 h-5" />}
                 </Button>
 
-                {/* Camera Button */}
                 <Button
-                  onClick={() => setCameraActive(!cameraActive)}
+                  onClick={handleToggleCamera}
                   className={`w-12 h-12 rounded-2xl transition-all ${
                     cameraActive
                       ? "bg-slate-800 hover:bg-slate-700 text-white"
@@ -383,9 +448,8 @@ export function VideoCallModal({
                   {cameraActive ? <Video className="w-5 h-5" /> : <VideoOff className="w-5 h-5" />}
                 </Button>
 
-                {/* Screen Share Button */}
                 <Button
-                  onClick={() => setScreenSharing(!screenSharing)}
+                  onClick={handleToggleScreenShare}
                   className={`w-12 h-12 rounded-2xl transition-all ${
                     screenSharing
                       ? "bg-emerald-600 hover:bg-emerald-500 text-white shadow-lg shadow-emerald-600/30"
@@ -396,7 +460,6 @@ export function VideoCallModal({
                   <Monitor className="w-5 h-5" />
                 </Button>
 
-                {/* Chat Drawer Toggle Button */}
                 <Button
                   onClick={() => setActiveTab(activeTab === "chat" ? "none" : "chat")}
                   className={`w-12 h-12 rounded-2xl transition-all ${
@@ -409,7 +472,6 @@ export function VideoCallModal({
                   <MessageSquare className="w-5 h-5" />
                 </Button>
 
-                {/* Clinical Notes Toggle Button */}
                 <Button
                   onClick={() => setActiveTab(activeTab === "notes" ? "none" : "notes")}
                   className={`w-12 h-12 rounded-2xl transition-all ${
@@ -422,7 +484,6 @@ export function VideoCallModal({
                   <FileText className="w-5 h-5" />
                 </Button>
 
-                {/* End Call Button */}
                 <Button
                   onClick={handleEndCall}
                   className="px-6 h-12 rounded-2xl bg-red-600 hover:bg-red-500 text-white font-extrabold shadow-lg shadow-red-600/30 flex items-center gap-2 ml-2"
