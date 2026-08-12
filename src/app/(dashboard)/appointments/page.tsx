@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useAuth } from "@/context/auth-context";
+import { useHIPAA } from "@/context/hipaa-context";
 import { apiRequest } from "@/lib/api-client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -20,11 +21,14 @@ import {
   XCircle,
   Sparkles,
   CheckCircle2,
-  AlertCircle
+  AlertCircle,
+  ShieldCheck,
+  EyeOff
 } from "lucide-react";
 
 export default function MyAppointmentsPage() {
   const { user } = useAuth();
+  const { isPhiMasked, maskPhi } = useHIPAA();
   const [appointments, setAppointments] = useState<any[]>([]);
   const [filter, setFilter] = useState("all");
   const [loading, setLoading] = useState(true);
@@ -86,36 +90,47 @@ export default function MyAppointmentsPage() {
             <Sparkles className="w-5 h-5 text-emerald-500" />
           </h2>
           <p className="text-muted-foreground text-sm font-medium">
-            Manage active medical visits, launch video consultations, or view clinical history
+            Manage active medical visits, launch video consultations, or view clinical history • HIPAA Safeguarded
           </p>
         </div>
-        <Button asChild className="rounded-2xl h-11 px-5 font-extrabold shadow-md bg-gradient-to-r from-emerald-600 to-teal-600 hover:opacity-95 text-white text-xs">
-          <Link href="/book">
-            <Plus className="w-4 h-4 mr-2" />
-            Book New Consultation
-          </Link>
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button asChild className="rounded-2xl h-11 px-5 font-extrabold shadow-md bg-gradient-to-r from-emerald-600 to-teal-600 hover:opacity-95 text-white text-xs">
+            <Link href="/book">
+              <Plus className="w-4 h-4 mr-2" />
+              Book New Consultation
+            </Link>
+          </Button>
+        </div>
       </div>
 
       {/* Filter Segmented Pills */}
-      <div className="flex items-center gap-2 border-b border-border/60 pb-3 overflow-x-auto scrollbar-none">
-        {["all", "confirmed", "completed", "cancelled"].map((tab) => {
-          const isActive = filter === tab;
-          return (
-            <button
-              key={tab}
-              type="button"
-              onClick={() => setFilter(tab)}
-              className={`px-4 py-2 rounded-2xl text-xs font-extrabold capitalize transition-all ${
-                isActive
-                  ? "bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-md"
-                  : "bg-card border border-border/80 text-muted-foreground hover:text-foreground hover:bg-muted/40"
-              }`}
-            >
-              {tab}
-            </button>
-          );
-        })}
+      <div className="flex items-center justify-between gap-2 border-b border-border/60 pb-3 overflow-x-auto scrollbar-none">
+        <div className="flex items-center gap-2">
+          {["all", "confirmed", "completed", "cancelled"].map((tab) => {
+            const isActive = filter === tab;
+            return (
+              <button
+                key={tab}
+                type="button"
+                onClick={() => setFilter(tab)}
+                className={`px-4 py-2 rounded-2xl text-xs font-extrabold capitalize transition-all ${
+                  isActive
+                    ? "bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-md"
+                    : "bg-card border border-border/80 text-muted-foreground hover:text-foreground hover:bg-muted/40"
+                }`}
+              >
+                {tab}
+              </button>
+            );
+          })}
+        </div>
+
+        {isPhiMasked && (
+          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-500/15 text-amber-700 dark:text-amber-300 font-extrabold text-xs border border-amber-500/30 shrink-0">
+            <EyeOff className="w-3.5 h-3.5 text-amber-500" />
+            <span>PHI Privacy Masking ON</span>
+          </div>
+        )}
       </div>
 
       {/* Appointments List */}
@@ -168,7 +183,7 @@ export default function MyAppointmentsPage() {
 
                     {appt.reason && (
                       <p className="text-xs text-foreground bg-muted/30 p-3 rounded-2xl mt-2 font-medium border border-border/50">
-                        <span className="font-black text-emerald-700 dark:text-emerald-400">Visit Reason:</span> {appt.reason}
+                        <span className="font-black text-emerald-700 dark:text-emerald-400">Visit Reason:</span> {maskPhi(appt.reason, "reason")}
                       </p>
                     )}
                   </div>
@@ -225,10 +240,9 @@ export default function MyAppointmentsPage() {
           doctorName={activeCallAppt.doctorName}
           doctorSpecialty={activeCallAppt.doctorSpecialty}
           doctorAvatar={activeCallAppt.doctorAvatar || activeCallAppt.doctor?.avatar}
-          patientName={user?.name || "Patient Consultation"}
+          patientName={maskPhi(user?.name || "Patient Consultation", "name")}
         />
       )}
     </div>
   );
 }
-

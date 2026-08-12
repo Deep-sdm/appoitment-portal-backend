@@ -25,12 +25,15 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useAuth } from "@/context/auth-context";
+import { useHIPAA } from "@/context/hipaa-context";
 import { NotificationService, AppNotification } from "@/services/notification.service";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { Eye, EyeOff, Lock } from "lucide-react";
 
 export function TopNav() {
   const { user, logout } = useAuth();
+  const { isPhiMasked, togglePhiMasking } = useHIPAA();
   const router = useRouter();
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);

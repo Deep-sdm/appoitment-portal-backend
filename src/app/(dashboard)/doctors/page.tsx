@@ -60,7 +60,7 @@ export default function DoctorsPage() {
         <div>
           <h2 className="text-3xl font-black tracking-tight text-foreground flex items-center gap-2">
             Doctor Specialists Directory
-            <Sparkles className="w-5 h-5 text-emerald-500" />
+            <Sparkles className="w-5 h-5 text-emerald-600" />
           </h2>
           <p className="text-muted-foreground text-sm font-medium">
             Browse certified physicians, check consultation fees & schedule appointments
@@ -80,7 +80,7 @@ export default function DoctorsPage() {
         </div>
       </div>
 
-      {/* Specialty Filter Segmented Pills */}
+      {/* Specialty Filter Segmented Pure Emerald Pills */}
       <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none">
         {specialties.map((spec) => {
           const isActive = selectedSpecialty === spec;
@@ -89,10 +89,10 @@ export default function DoctorsPage() {
               key={spec}
               type="button"
               onClick={() => setSelectedSpecialty(spec)}
-              className={`px-4 py-2 rounded-2xl text-xs font-extrabold transition-all shrink-0 ${
+              className={`px-4 py-2 rounded-2xl text-xs font-black transition-all shrink-0 border ${
                 isActive
-                  ? "bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-md shadow-emerald-600/25 scale-[1.02]"
-                  : "bg-card border border-border/80 text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                  ? "bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 text-white shadow-md shadow-emerald-600/20 scale-[1.02] border-transparent"
+                  : "bg-card border-border/80 text-muted-foreground hover:text-foreground hover:bg-muted/50"
               }`}
             >
               {spec}
@@ -110,13 +110,12 @@ export default function DoctorsPage() {
       ) : doctors.length > 0 ? (
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {doctors.map((doctor) => {
-            const isAvailable = !doctor.holidays || doctor.holidays.length === 0;
             return (
-              <Card key={doctor._id} className="flex flex-col justify-between rounded-3xl border-border/70 bg-card shadow-sm hover-lift overflow-hidden">
+              <Card key={doctor._id} className="flex flex-col justify-between rounded-3xl border-border/80 bg-card shadow-sm hover-lift overflow-hidden">
                 <CardHeader className="p-6 pb-3">
                   <div className="flex items-start gap-4">
                     <div className="relative">
-                      <Avatar className="h-16 w-16 border-2 border-emerald-500/30 shadow-md shrink-0">
+                      <Avatar className="h-16 w-16 border-2 border-emerald-500/30 shadow-xs shrink-0">
                         <AvatarImage src={doctor.avatar} alt={doctor.name} />
                         <AvatarFallback className="bg-emerald-500/10 text-emerald-700 font-extrabold">
                           <Stethoscope className="w-7 h-7 text-emerald-600" />
@@ -125,22 +124,22 @@ export default function DoctorsPage() {
                       <span className="absolute bottom-0 right-0 w-3.5 h-3.5 rounded-full bg-emerald-500 border-2 border-background" />
                     </div>
 
-                    <div className="space-y-1 min-w-0 flex-1">
-                      <div className="flex items-center justify-between gap-1">
-                        <span className="inline-block px-2.5 py-0.5 text-[10px] font-black text-emerald-700 dark:text-emerald-300 bg-emerald-500/15 rounded-full uppercase tracking-wider">
+                    <div className="space-y-1.5 min-w-0 flex-1">
+                      <div className="flex items-center justify-between gap-1 flex-wrap">
+                        <span className="inline-block px-2.5 py-0.5 text-[10px] font-black rounded-full uppercase tracking-wider bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-500/20">
                           {doctor.specialty}
                         </span>
                         {doctor.holidays && doctor.holidays.length > 0 && (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 text-[9px] font-black bg-red-500/15 text-red-700 dark:text-red-300 rounded-full">
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 text-[9px] font-black bg-red-500/10 text-red-700 dark:text-red-300 rounded-full border border-red-500/20">
                             <Palmtree className="w-3 h-3" /> Holiday Alert
                           </span>
                         )}
                       </div>
 
-                      <h3 className="text-base font-extrabold text-foreground truncate">{doctor.name}</h3>
+                      <h3 className="text-base font-black text-foreground truncate">{doctor.name}</h3>
 
-                      <div className="flex items-center gap-1.5 text-xs text-amber-600 font-bold">
-                        <Star className="w-3.5 h-3.5 fill-amber-500 text-amber-500" />
+                      <div className="flex items-center gap-1.5 text-xs text-emerald-600 dark:text-emerald-400 font-bold">
+                        <Star className="w-3.5 h-3.5 fill-emerald-500 text-emerald-500" />
                         <span>{doctor.rating}</span>
                         <span className="text-muted-foreground font-medium">({doctor.reviewsCount || 12} reviews)</span>
                       </div>
@@ -152,13 +151,13 @@ export default function DoctorsPage() {
                   <p className="line-clamp-2 leading-relaxed font-medium">{doctor.bio}</p>
 
                   <div className="grid grid-cols-2 gap-2 pt-3 border-t border-border/50 text-foreground font-bold">
-                    <div className="flex items-center gap-1.5">
-                      <Briefcase className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                      <span>{doctor.experience} Yrs Experience</span>
+                    <div className="flex items-center gap-1.5 text-emerald-700 dark:text-emerald-300">
+                      <Briefcase className="w-3.5 h-3.5 shrink-0" />
+                      <span>{doctor.experience} Yrs Exp</span>
                     </div>
                     <div className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400">
                       <DollarSign className="w-3.5 h-3.5 shrink-0" />
-                      <span>${doctor.fee} / Consultation</span>
+                      <span>${doctor.fee} / Visit</span>
                     </div>
                   </div>
 
@@ -169,7 +168,7 @@ export default function DoctorsPage() {
                 </CardContent>
 
                 <CardFooter className="px-6 pb-6 pt-2 gap-2">
-                  <Button asChild className="flex-1 rounded-2xl h-11 font-extrabold shadow-md bg-gradient-to-r from-emerald-600 to-teal-600 hover:opacity-95 text-white text-xs">
+                  <Button asChild className="flex-1 rounded-2xl h-11 font-black shadow-md bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 hover:opacity-95 text-white text-xs">
                     <Link href={`/book?doctorId=${doctor._id}`}>
                       <Calendar className="w-3.5 h-3.5 mr-1.5" /> Book Consultation
                     </Link>
@@ -182,11 +181,10 @@ export default function DoctorsPage() {
       ) : (
         <Card className="rounded-3xl p-12 text-center border-border/80">
           <Stethoscope className="w-10 h-10 text-muted-foreground/40 mx-auto mb-2" />
-          <p className="text-base font-extrabold text-foreground">No doctor specialists found</p>
+          <p className="text-base font-black text-foreground">No doctor specialists found</p>
           <p className="text-xs text-muted-foreground mt-1">Try adjusting your search query or specialty filter.</p>
         </Card>
       )}
     </div>
   );
 }
-

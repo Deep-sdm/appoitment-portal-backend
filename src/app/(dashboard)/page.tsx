@@ -65,36 +65,36 @@ export default function DashboardHome() {
 
   return (
     <div className="flex-1 space-y-6 max-w-7xl mx-auto">
-      {/* Welcome Hero Banner */}
-      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-emerald-900 via-teal-800 to-cyan-900 p-6 md:p-8 text-white shadow-2xl border border-emerald-500/20">
+      {/* Hero Banner with Medical Emerald + Teal Gradient */}
+      <div className="relative overflow-hidden rounded-3xl glass-hero-medical p-6 md:p-8 text-white shadow-xl border border-emerald-400/20">
         {/* Glow ambient background mesh */}
-        <div className="absolute -right-16 -bottom-16 w-96 h-96 bg-cyan-400/25 rounded-full blur-3xl pointer-events-none animate-pulse-glow" />
-        <div className="absolute top-0 right-1/4 w-72 h-72 bg-emerald-400/20 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute -right-16 -bottom-16 w-96 h-96 bg-emerald-400/20 rounded-full blur-3xl pointer-events-none animate-pulse-glow" />
+        <div className="absolute top-0 right-1/4 w-80 h-80 bg-teal-400/20 rounded-full blur-3xl pointer-events-none" />
 
         <div className="relative z-10 space-y-4 max-w-2xl">
-          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/10 backdrop-blur-md text-xs font-extrabold border border-white/20 shadow-sm">
-            <Activity className="w-4 h-4 text-emerald-300 animate-pulse" />
-            <span>Smart Health Suite • Real-time Sync Active</span>
+          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/15 backdrop-blur-md text-xs font-extrabold border border-white/25 shadow-sm">
+            <Activity className="w-4 h-4 text-emerald-200 animate-pulse" />
+            <span>Healthcare Portal • Patient Care Suite</span>
           </div>
 
           <h1 className="text-3xl md:text-4xl lg:text-5xl font-black tracking-tight text-white leading-tight">
-            Welcome back, <span className="bg-gradient-to-r from-emerald-200 via-teal-100 to-white bg-clip-text text-transparent">{user ? user.name : "Patient"}</span> 👋
+            Welcome back, <span className="bg-gradient-to-r from-emerald-100 via-teal-100 to-white bg-clip-text text-transparent">{user ? user.name : "Patient"}</span> 👋
           </h1>
 
-          <p className="text-white/90 text-sm md:text-base leading-relaxed font-medium">
+          <p className="text-white/95 text-sm md:text-base leading-relaxed font-medium">
             Manage your medical consultations, review diagnostic notes, browse certified specialists, and launch HD video calls with instant availability checking.
           </p>
 
           <div className="flex flex-wrap items-center gap-3 pt-2">
-            <Button asChild size="lg" className="rounded-2xl bg-white text-emerald-950 hover:bg-emerald-50 font-black shadow-xl gap-2 hover:scale-[1.02] transition-transform">
+            <Button asChild size="lg" className="rounded-2xl bg-white text-emerald-950 hover:bg-emerald-50 font-black shadow-lg gap-2 hover:scale-[1.02] transition-transform">
               <Link href="/book">
                 <Plus className="w-5 h-5 text-emerald-600 shrink-0" />
                 Book Appointment
               </Link>
             </Button>
-            <Button asChild variant="outline" size="lg" className="rounded-2xl border-white/30 text-white hover:bg-white/10 font-bold backdrop-blur-md">
+            <Button asChild variant="outline" size="lg" className="rounded-2xl border-white/40 text-white hover:bg-white/15 font-bold backdrop-blur-md">
               <Link href="/doctors" className="flex items-center gap-2">
-                <Stethoscope className="w-4 h-4 text-emerald-300" />
+                <Stethoscope className="w-4.5 h-4.5 text-emerald-200" />
                 Specialists Directory
               </Link>
             </Button>
@@ -102,9 +102,9 @@ export default function DashboardHome() {
         </div>
       </div>
 
-      {/* Overview Stat Cards with Trends */}
+      {/* Clinical Stat Cards with Pure Emerald Theme */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <Card className="rounded-3xl border-border/70 shadow-sm hover-lift bg-card">
+        <Card className="rounded-3xl border-emerald-500/20 bg-card shadow-sm hover-lift">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-xs font-extrabold uppercase tracking-wider text-muted-foreground">Certified Specialists</CardTitle>
             <div className="w-10 h-10 rounded-2xl bg-emerald-500/10 text-emerald-600 flex items-center justify-center shadow-xs">
@@ -120,48 +120,48 @@ export default function DashboardHome() {
           </CardContent>
         </Card>
 
-        <Card className="rounded-3xl border-border/70 shadow-sm hover-lift bg-card">
+        <Card className="rounded-3xl border-emerald-500/20 bg-card shadow-sm hover-lift">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-xs font-extrabold uppercase tracking-wider text-muted-foreground">Upcoming Visits</CardTitle>
-            <div className="w-10 h-10 rounded-2xl bg-amber-500/10 text-amber-600 flex items-center justify-center shadow-xs">
+            <div className="w-10 h-10 rounded-2xl bg-emerald-500/10 text-emerald-600 flex items-center justify-center shadow-xs">
               <Clock className="w-5 h-5" />
             </div>
           </CardHeader>
           <CardContent className="space-y-1">
             <div className="text-3xl font-black text-foreground">{loading ? "..." : (stats?.metrics?.upcomingAppointments || 0)}</div>
-            <div className="flex items-center gap-1 text-xs text-amber-600 dark:text-amber-400 font-bold">
+            <div className="flex items-center gap-1 text-xs text-emerald-600 dark:text-emerald-400 font-bold">
               <Sparkles className="w-3.5 h-3.5" />
               <span>Scheduled Sessions</span>
             </div>
           </CardContent>
         </Card>
 
-        <Card className="rounded-3xl border-border/70 shadow-sm hover-lift bg-card">
+        <Card className="rounded-3xl border-emerald-500/20 bg-card shadow-sm hover-lift">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-xs font-extrabold uppercase tracking-wider text-muted-foreground">Completed Visits</CardTitle>
-            <div className="w-10 h-10 rounded-2xl bg-blue-500/10 text-blue-600 flex items-center justify-center shadow-xs">
+            <div className="w-10 h-10 rounded-2xl bg-emerald-500/10 text-emerald-600 flex items-center justify-center shadow-xs">
               <CheckCircle2 className="w-5 h-5" />
             </div>
           </CardHeader>
           <CardContent className="space-y-1">
             <div className="text-3xl font-black text-foreground">{loading ? "..." : (stats?.metrics?.completedAppointments || 0)}</div>
-            <div className="flex items-center gap-1 text-xs text-blue-600 dark:text-blue-400 font-bold">
+            <div className="flex items-center gap-1 text-xs text-emerald-600 dark:text-emerald-400 font-bold">
               <Award className="w-3.5 h-3.5" />
               <span>Diagnoses Saved</span>
             </div>
           </CardContent>
         </Card>
 
-        <Card className="rounded-3xl border-border/70 shadow-sm hover-lift bg-card">
+        <Card className="rounded-3xl border-emerald-500/20 bg-card shadow-sm hover-lift">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-xs font-extrabold uppercase tracking-wider text-muted-foreground">Total Consultations</CardTitle>
-            <div className="w-10 h-10 rounded-2xl bg-purple-500/10 text-purple-600 flex items-center justify-center shadow-xs">
+            <div className="w-10 h-10 rounded-2xl bg-emerald-500/10 text-emerald-600 flex items-center justify-center shadow-xs">
               <CalendarClock className="w-5 h-5" />
             </div>
           </CardHeader>
           <CardContent className="space-y-1">
             <div className="text-3xl font-black text-foreground">{loading ? "..." : (stats?.metrics?.totalAppointments || 0)}</div>
-            <div className="flex items-center gap-1 text-xs text-purple-600 dark:text-purple-400 font-bold">
+            <div className="flex items-center gap-1 text-xs text-emerald-600 dark:text-emerald-400 font-bold">
               <ShieldCheck className="w-3.5 h-3.5" />
               <span>Lifetime Record</span>
             </div>
@@ -172,7 +172,7 @@ export default function DashboardHome() {
       {/* Main Grid Section */}
       <div className="grid gap-6 lg:grid-cols-3">
         {/* Upcoming Appointments List */}
-        <Card className="lg:col-span-2 rounded-3xl border-border/70 shadow-sm bg-card">
+        <Card className="lg:col-span-2 rounded-3xl border-border/80 shadow-sm bg-card">
           <CardHeader className="flex flex-row items-center justify-between pb-4 border-b border-border/60">
             <div>
               <CardTitle className="text-lg font-extrabold flex items-center gap-2">
@@ -193,13 +193,13 @@ export default function DashboardHome() {
                 {stats.recentAppointments.map((appt: any) => (
                   <div key={appt._id} className="flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-2xl border border-border/60 bg-muted/20 hover:bg-muted/40 transition-colors gap-3">
                     <div className="flex items-center gap-3">
-                      <Avatar className="h-12 w-12 border-2 border-emerald-500/30 shrink-0">
+                      <Avatar className="h-12 w-12 border-2 border-emerald-500/30 shrink-0 shadow-xs">
                         <AvatarImage src={appt.doctorAvatar || appt.doctor?.avatar} alt={appt.doctorName} />
                         <AvatarFallback className="bg-emerald-500/10 text-emerald-700 font-bold"><Stethoscope className="w-5 h-5 text-emerald-600" /></AvatarFallback>
                       </Avatar>
                       <div>
                         <h4 className="font-extrabold text-sm text-foreground">{appt.doctorName}</h4>
-                        <p className="text-xs text-muted-foreground font-medium">{appt.doctorSpecialty}</p>
+                        <p className="text-xs text-emerald-600 dark:text-emerald-400 font-bold">{appt.doctorSpecialty}</p>
                         <div className="flex items-center gap-3 text-xs text-muted-foreground mt-1 font-semibold">
                           <span className="flex items-center gap-1 text-foreground">
                             <Calendar className="w-3.5 h-3.5 text-emerald-600" /> {appt.date}
@@ -213,18 +213,18 @@ export default function DashboardHome() {
 
                     <div className="flex items-center gap-2 self-end sm:self-center">
                       {appt.type === "video" && appt.status === "confirmed" && (
-                        <Button asChild size="sm" className="h-9 px-3.5 rounded-xl font-bold bg-emerald-600 hover:bg-emerald-700 text-white text-xs shadow-sm">
+                        <Button asChild size="sm" className="h-9 px-4 rounded-xl font-bold bg-emerald-600 hover:bg-emerald-700 text-white text-xs shadow-sm">
                           <Link href="/telehealth">
                             <Video className="w-3.5 h-3.5 mr-1" /> Join Call
                           </Link>
                         </Button>
                       )}
-                      <span className={`px-3 py-1 text-xs font-black rounded-full capitalize ${
+                      <span className={`px-3 py-1 text-xs font-extrabold rounded-full capitalize ${
                         appt.status === 'confirmed'
                           ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300'
                           : appt.status === 'cancelled'
                           ? 'bg-red-500/15 text-red-700 dark:text-red-300'
-                          : 'bg-amber-500/15 text-amber-700 dark:text-amber-300'
+                          : 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300'
                       }`}>
                         {appt.status}
                       </span>
@@ -254,7 +254,7 @@ export default function DashboardHome() {
         {/* Sidebar: Mini Calendar & Top Specialists */}
         <div className="space-y-6">
           {/* Calendar Overview Card */}
-          <Card className="rounded-3xl border-border/70 shadow-sm bg-card">
+          <Card className="rounded-3xl border-border/80 shadow-sm bg-card">
             <CardHeader className="flex flex-row items-center justify-between pb-3 border-b border-border/60">
               <div className="flex items-center gap-2">
                 <CalendarDays className="w-4.5 h-4.5 text-emerald-600" />
@@ -265,7 +265,7 @@ export default function DashboardHome() {
               </Button>
             </CardHeader>
             <CardContent className="pt-4 space-y-3 text-xs">
-              <div className="p-3 bg-gradient-to-r from-emerald-500/10 to-teal-500/10 rounded-2xl text-emerald-800 dark:text-emerald-300 font-extrabold flex items-center justify-between border border-emerald-500/20">
+              <div className="p-3 bg-emerald-500/10 rounded-2xl text-emerald-900 dark:text-emerald-200 font-extrabold flex items-center justify-between border border-emerald-500/20">
                 <span>Today&apos;s Date</span>
                 <span>{todayStr}</span>
               </div>
@@ -276,7 +276,7 @@ export default function DashboardHome() {
           </Card>
 
           {/* Top Specialists Sidebar */}
-          <Card className="rounded-3xl border-border/70 shadow-sm bg-card">
+          <Card className="rounded-3xl border-border/80 shadow-sm bg-card">
             <CardHeader className="flex flex-row items-center justify-between pb-4 border-b border-border/60">
               <div>
                 <CardTitle className="text-base font-extrabold">Top Doctor Specialists</CardTitle>
@@ -297,9 +297,9 @@ export default function DashboardHome() {
                       </Avatar>
                       <div className="truncate">
                         <h4 className="font-extrabold text-xs truncate text-foreground">{doc.name}</h4>
-                        <p className="text-[11px] text-muted-foreground truncate font-medium">{doc.specialty}</p>
-                        <div className="flex items-center gap-1 text-[11px] font-bold text-amber-600 mt-0.5">
-                          <Star className="w-3 h-3 fill-amber-500 text-amber-500" />
+                        <p className="text-[11px] text-emerald-600 dark:text-emerald-400 truncate font-bold">{doc.specialty}</p>
+                        <div className="flex items-center gap-1 text-[11px] font-bold text-emerald-600 mt-0.5">
+                          <Star className="w-3 h-3 fill-emerald-500 text-emerald-500" />
                           <span>{doc.rating}</span>
                           <span className="text-muted-foreground font-medium">(${doc.fee})</span>
                         </div>
@@ -318,4 +318,3 @@ export default function DashboardHome() {
     </div>
   );
 }
-

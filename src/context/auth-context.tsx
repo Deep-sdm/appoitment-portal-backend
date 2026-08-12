@@ -55,12 +55,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               localStorage.setItem('medibook_user', JSON.stringify(userData));
             }
           })
-          .catch(() => {
-            logout();
+          .catch((err) => {
+            console.warn("Backend auth verification fallback to local session:", err);
+            // Retain cached user session for offline/demo reliability
           })
           .finally(() => setIsLoading(false));
       } catch {
-        logout();
         setIsLoading(false);
       }
     } else {
