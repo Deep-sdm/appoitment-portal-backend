@@ -196,6 +196,11 @@ io.on('connection', (socket) => {
 
 const PORT = process.env.PORT || 5000;
 
-server.listen(PORT, () => {
-  console.log(`MediBook Backend Server & Socket.io running on port ${PORT}`);
-});
+if (require.main === module || !process.env.VERCEL) {
+  server.listen(PORT, () => {
+    console.log(`MediBook Backend Server & Socket.io running on port ${PORT}`);
+  });
+}
+
+module.exports = app;
+
